@@ -1,0 +1,282 @@
+stages:
+  - deploy
+StandbyFacebook:
+  except:
+    - schedules
+  stage: deploy
+  variables:
+    #CI_DEBUG_TRACE: "true"
+    GIT_CLEAN_FLAGS: none
+  tags:
+    - shell, ubuntu, GPU, dlc1
+  before_script:
+    - python --version
+    - sudo pip3 install -r ./requirements.txt
+  script:
+    - cd Facebook/FacebookScraper
+    - sudo python3 FacebookScraper.py
+    - sudo curl -T DataFromFacebook.csv -u "admin:Barco1234" http://dlc.barco.com:9980/remote.php/dav/files/admin/Datasets/NLP/sentiment%20labelled%20sentences/
+    - X_COMMENT_COUNT=$(PYTHONIOENCODING=utf8 csvcut -c 1 -d , DataFromFacebook.csv | PYTHONIOENCODING=utf8 csvstat -d , --unique | PYTHONIOENCODING=utf8 csvcut  -d ,)
+    - echo $X_COMMENT_COUNT
+    - X_COMMENT_LATEST=$(date --date "$(PYTHONIOENCODING=utf8 csvcut -c 2 -d , DataFromFacebook.csv | PYTHONIOENCODING=utf8 csvstat -d , --max | PYTHONIOENCODING=utf8 csvcut  -d ,)" +%s)
+    - echo $X_COMMENT_LATEST
+    - event="WebScraper,FBLatest=$X_COMMENT_LATEST FBCommentCount=$X_COMMENT_COUNT"
+    - echo event
+    - sudo curl -v --request POST "http://dlc.barco.com:8086/api/v2/write?org=Barco&bucket=web-scraper&precision=s" --header "Authorization:Token RY2nOnL5795tZZm4Qu11syzT4E-UWW27Nw2jPZgGw0GsTzd6J7GNGvNUsjm875V-Kmz06lmfQcvHs_BgB-Z4RQ==" --data-binary "$(echo "$event")"
+StandbyReddit:
+  except:
+    - schedules
+  stage: deploy
+  variables:
+    #CI_DEBUG_TRACE: "true"
+    GIT_CLEAN_FLAGS: none
+  tags:
+    - shell, ubuntu, GPU, dlc1
+  before_script:
+    - python --version
+    - sudo pip3 install -r ./requirements.txt
+  script:
+    - cd Reddit/RedditScraper
+    - sudo python3 RedditScraper.py
+    - sudo curl -T DataFromReddit.csv -u "admin:Barco1234" http://dlc.barco.com:9980/remote.php/dav/files/admin/Datasets/NLP/sentiment%20labelled%20sentences/
+    - Reddit_COMMENT_COUNT=$(PYTHONIOENCODING=utf8 csvcut -c 2 -d , DataFromReddit.csv | PYTHONIOENCODING=utf8 csvstat -d , --unique | PYTHONIOENCODING=utf8 csvcut  -d ,)
+    - echo $Reddit_COMMENT_COUNT
+    - Reddit_COMMENT_LATEST=$(date --date "$(PYTHONIOENCODING=utf8 csvcut -c 3 -d , DataFromReddit.csv | PYTHONIOENCODING=utf8 csvstat -d , --max | PYTHONIOENCODING=utf8 csvcut  -d ,)" +%s)
+    - echo $Reddit_COMMENT_LATEST
+    - event="WebScraper,RedditLatest=$Reddit_COMMENT_LATEST RedditCommentCount=$Reddit_COMMENT_COUNT"
+    - echo $event
+    - sudo curl -v --request POST "http://dlc.barco.com:8086/api/v2/write?org=Barco&bucket=web-scraper&precision=s" --header "Authorization:Token RY2nOnL5795tZZm4Qu11syzT4E-UWW27Nw2jPZgGw0GsTzd6J7GNGvNUsjm875V-Kmz06lmfQcvHs_BgB-Z4RQ==" --data-binary "$(echo "$RedditEvent")"
+StandbySearchEngines:
+  except:
+    - schedules
+  stage: deploy
+  variables:
+    #CI_DEBUG_TRACE: "true"
+    GIT_CLEAN_FLAGS: none
+  tags:
+    - shell, ubuntu, GPU, dlc1
+  before_script:
+    - python --version
+    - sudo pip3 install -r ./requirements.txt
+    - cd SearchEngines/SearchEnginesScraper
+    - sudo python setup.py install
+  script:
+    - python3 searchEnginesScraper.py
+    - sudo curl -T DataFromGoogle.csv -u "admin:Barco1234" http://dlc.barco.com:9980/remote.php/dav/files/admin/Datasets/NLP/sentiment%20labelled%20sentences/
+    - sudo curl -T DataFromYahoo.csv -u "admin:Barco1234" http://dlc.barco.com:9980/remote.php/dav/files/admin/Datasets/NLP/sentiment%20labelled%20sentences/
+    - sudo curl -T DataFromBing.csv -u "admin:Barco1234" http://dlc.barco.com:9980/remote.php/dav/files/admin/Datasets/NLP/sentiment%20labelled%20sentences/
+    - sudo curl -T DataFromStartpage.csv -u "admin:Barco1234" http://dlc.barco.com:9980/remote.php/dav/files/admin/Datasets/NLP/sentiment%20labelled%20sentences/
+    - sudo curl -T DataFromAol.csv -u "admin:Barco1234" http://dlc.barco.com:9980/remote.php/dav/files/admin/Datasets/NLP/sentiment%20labelled%20sentences/
+    - sudo curl -T DataFromAsk.csv -u "admin:Barco1234" http://dlc.barco.com:9980/remote.php/dav/files/admin/Datasets/NLP/sentiment%20labelled%20sentences/
+
+    - X_COMMENT_COUNT=$(PYTHONIOENCODING=utf8 csvcut -c 2 -d , DataFromGoogle.csv |csvstat -d , --unique | csvcut  -d ,)
+    - echo $X_COMMENT_COUNT
+    - X_COMMENT_LATEST=$(date --date "$(PYTHONIOENCODING=utf8 csvcut -c 3 -d , DataFromGoogle.csv |csvstat -d , --max | csvcut  -d ,)" +%s)
+    - echo $X_COMMENT_LATEST
+    - event="WebScraper,GoogleLatest=$X_COMMENT_LATEST GoogleCommentCount=$X_COMMENT_COUNT"
+    - echo $event
+    - sudo curl -v --request POST "http://dlc.barco.com:8086/api/v2/write?org=Barco&bucket=web-scraper&precision=s" --header "Authorization:Token RY2nOnL5795tZZm4Qu11syzT4E-UWW27Nw2jPZgGw0GsTzd6J7GNGvNUsjm875V-Kmz06lmfQcvHs_BgB-Z4RQ==" --data-binary "$(echo "$event")"
+    
+    - X_COMMENT_COUNT=$(PYTHONIOENCODING=utf8 csvcut -c 2 -d , DataFromYahoo.csv |csvstat -d , --unique | csvcut  -d ,)
+    - echo $X_COMMENT_COUNT
+    - X_COMMENT_LATEST=$(date --date "$(PYTHONIOENCODING=utf8 csvcut -c 3 -d , DataFromYahoo.csv |csvstat -d , --max | csvcut  -d ,)" +%s)
+    - echo $X_COMMENT_LATEST
+    - event="WebScraper,YahooLatest=$X_COMMENT_LATEST YahooCommentCount=$X_COMMENT_COUNT"
+    - echo $event
+    - sudo curl -v --request POST "http://dlc.barco.com:8086/api/v2/write?org=Barco&bucket=web-scraper&precision=s" --header "Authorization:Token RY2nOnL5795tZZm4Qu11syzT4E-UWW27Nw2jPZgGw0GsTzd6J7GNGvNUsjm875V-Kmz06lmfQcvHs_BgB-Z4RQ==" --data-binary "$(echo "$event")"
+    
+    - X_COMMENT_COUNT=$(PYTHONIOENCODING=utf8 csvcut -c 2 -d , DataFromBing.csv |csvstat -d , --unique | csvcut  -d ,)
+    - echo $X_COMMENT_COUNT
+    - X_COMMENT_LATEST=$(date --date "$(PYTHONIOENCODING=utf8 csvcut -c 3 -d , DataFromBing.csv |csvstat -d , --max | csvcut  -d ,)" +%s)
+    - echo $X_COMMENT_LATEST
+    - event="WebScraper,BingLatest=$X_COMMENT_LATEST BingCommentCount=$X_COMMENT_COUNT"
+    - echo $event
+    - sudo curl -v --request POST "http://dlc.barco.com:8086/api/v2/write?org=Barco&bucket=web-scraper&precision=s" --header "Authorization:Token RY2nOnL5795tZZm4Qu11syzT4E-UWW27Nw2jPZgGw0GsTzd6J7GNGvNUsjm875V-Kmz06lmfQcvHs_BgB-Z4RQ==" --data-binary "$(echo "$event")"
+
+    - X_COMMENT_COUNT=$(PYTHONIOENCODING=utf8 csvcut -c 2 -d , DataFromStartpage.csv |csvstat -d , --unique | csvcut  -d ,)
+    - echo $X_COMMENT_COUNT
+    - X_COMMENT_LATEST=$(date --date "$(PYTHONIOENCODING=utf8 csvcut -c 3 -d , DataFromStartpage.csv |csvstat -d , --max | csvcut  -d ,)" +%s)
+    - echo $X_COMMENT_LATEST
+    - event="WebScraper,StartpageLatest=$X_COMMENT_LATEST StartpageCommentCount=$X_COMMENT_COUNT"
+    - echo $event
+    - sudo curl -v --request POST "http://dlc.barco.com:8086/api/v2/write?org=Barco&bucket=web-scraper&precision=s" --header "Authorization:Token RY2nOnL5795tZZm4Qu11syzT4E-UWW27Nw2jPZgGw0GsTzd6J7GNGvNUsjm875V-Kmz06lmfQcvHs_BgB-Z4RQ==" --data-binary "$(echo "$event")"
+
+    - X_COMMENT_COUNT=$(PYTHONIOENCODING=utf8 csvcut -c 2 -d , DataFromAol.csv |csvstat -d , --unique | csvcut  -d ,)
+    - echo $X_COMMENT_COUNT
+    - X_COMMENT_LATEST=$(date --date "$(PYTHONIOENCODING=utf8 csvcut -c 3 -d , DataFromAol.csv |csvstat -d , --max | csvcut  -d ,)" +%s)
+    - echo $X_COMMENT_LATEST
+    - event="WebScraper,AolLatest=$X_COMMENT_LATEST AolCommentCount=$X_COMMENT_COUNT"
+    - echo $event
+    - sudo curl -v --request POST "http://dlc.barco.com:8086/api/v2/write?org=Barco&bucket=web-scraper&precision=s" --header "Authorization:Token RY2nOnL5795tZZm4Qu11syzT4E-UWW27Nw2jPZgGw0GsTzd6J7GNGvNUsjm875V-Kmz06lmfQcvHs_BgB-Z4RQ==" --data-binary "$(echo "$event")"
+
+    - X_COMMENT_COUNT=$(PYTHONIOENCODING=utf8 csvcut -c 2 -d , DataFromAsk.csv |csvstat -d , --unique | csvcut  -d ,)
+    - echo $X_COMMENT_COUNT
+    - X_COMMENT_LATEST=$(date --date "$(PYTHONIOENCODING=utf8 csvcut -c 3 -d , DataFromAsk.csv |csvstat -d , --max | csvcut  -d ,)" +%s)
+    - echo $X_COMMENT_LATEST
+    - event="WebScraper,AskLatest=$X_COMMENT_LATEST AskCommentCount=$X_COMMENT_COUNT"
+    - echo $event
+    - sudo curl -v --request POST "http://dlc.barco.com:8086/api/v2/write?org=Barco&bucket=web-scraper&precision=s" --header "Authorization:Token RY2nOnL5795tZZm4Qu11syzT4E-UWW27Nw2jPZgGw0GsTzd6J7GNGvNUsjm875V-Kmz06lmfQcvHs_BgB-Z4RQ==" --data-binary "$(echo "$event")"
+StandbyTwitter:
+  except:
+    - schedules
+  stage: deploy
+  variables:
+    #CI_DEBUG_TRACE: "true"
+    GIT_CLEAN_FLAGS: none
+  tags:
+    - shell, ubuntu, GPU, dlc1
+  before_script:
+    - python --version
+    - sudo pip3 install -r ./requirements.txt
+  script:
+    - cd Twitter/TwitterScraper
+    - sudo rm DataFromTwitter.csv
+    - sudo python3 TwitterScraper.py
+    - sudo curl -T DataFromTwitter.csv -u "admin:Barco1234" http://dlc.barco.com:9980/remote.php/dav/files/admin/Datasets/NLP/sentiment%20labelled%20sentences/
+    - X_COMMENT_COUNT=$(PYTHONIOENCODING=utf8 csvcut -c 1 -d , DataFromTwitter.csv |csvstat -d , --unique | csvcut  -d ,)
+    - echo $X_COMMENT_COUNT
+    - X_COMMENT_LATEST=$(date --date "$(PYTHONIOENCODING=utf8 csvcut -c 2 -d , DataFromTwitter.csv |csvstat -d , --max | csvcut  -d ,)" +%s)
+    - echo $X_COMMENT_LATEST
+    - event="WebScraper,TwitterLatest=$X_COMMENT_LATEST TwitterCommentCount=$X_COMMENT_COUNT"
+    - echo $event
+    - sudo curl -v --request POST "http://dlc.barco.com:8086/api/v2/write?org=Barco&bucket=web-scraper&precision=s" --header "Authorization:Token RY2nOnL5795tZZm4Qu11syzT4E-UWW27Nw2jPZgGw0GsTzd6J7GNGvNUsjm875V-Kmz06lmfQcvHs_BgB-Z4RQ==" --data-binary "$(echo "$event")"
+ScheduledFacebook:on-schedule:
+  stage: deploy
+  variables:
+    #CI_DEBUG_TRACE: "true"
+    GIT_CLEAN_FLAGS: none
+  tags:
+    - shell, ubuntu, GPU, dlc1
+  only:
+    - schedules
+  before_script:
+    - python --version
+    - sudo pip3 install -r ./requirements.txt
+  script:
+    - cd Facebook/FacebookScraper
+    - sudo python3 FacebookScraper.py
+    - sudo curl -T DataFromFacebook.csv -u "admin:Barco1234" http://dlc.barco.com:9980/remote.php/dav/files/admin/Datasets/NLP/sentiment%20labelled%20sentences/
+    - X_COMMENT_COUNT=$(PYTHONIOENCODING=utf8 csvcut -c 1 -d , DataFromFacebook.csv | PYTHONIOENCODING=utf8 csvstat -d , --unique | PYTHONIOENCODING=utf8 csvcut  -d ,)
+    - echo $X_COMMENT_COUNT
+    - X_COMMENT_LATEST=$(date --date "$(PYTHONIOENCODING=utf8 csvcut -c 2 -d , DataFromFacebook.csv | PYTHONIOENCODING=utf8 csvstat -d , --max | PYTHONIOENCODING=utf8 csvcut  -d ,)" +%s)
+    - echo $X_COMMENT_LATEST
+    - event="WebScraper,FBLatest=$X_COMMENT_LATEST FBCommentCount=$X_COMMENT_COUNT"
+    - echo event
+    - sudo curl -v --request POST "http://dlc.barco.com:8086/api/v2/write?org=Barco&bucket=web-scraper&precision=s" --header "Authorization:Token RY2nOnL5795tZZm4Qu11syzT4E-UWW27Nw2jPZgGw0GsTzd6J7GNGvNUsjm875V-Kmz06lmfQcvHs_BgB-Z4RQ==" --data-binary "$(echo "$event")"
+ScheduledReddit:on-schedule:
+  stage: deploy
+  variables:
+    #CI_DEBUG_TRACE: "true"
+    GIT_CLEAN_FLAGS: none
+  tags:
+    - shell, ubuntu, GPU, dlc1
+  only:
+    - schedules
+  before_script:
+    - python --version
+    - sudo pip3 install -r ./requirements.txt
+  script:
+    - cd Reddit/RedditScraper
+    - python3 RedditScraper.py
+    - sudo curl -T DataFromReddit.csv -u "admin:Barco1234" http://dlc.barco.com:9980/remote.php/dav/files/admin/Datasets/NLP/sentiment%20labelled%20sentences/
+    - X_COMMENT_COUNT=$(PYTHONIOENCODING=utf8 csvcut -c 2 -d , DataFromReddit.csv | PYTHONIOENCODING=utf8 csvstat -d , --unique | PYTHONIOENCODING=utf8 csvcut  -d ,)
+    - echo $X_COMMENT_COUNT
+    - X_COMMENT_LATEST=$(date --date "$(PYTHONIOENCODING=utf8 csvcut -c 3 -d , DataFromReddit.csv | PYTHONIOENCODING=utf8 csvstat -d , --max | PYTHONIOENCODING=utf8 csvcut  -d ,)" +%s)
+    - echo $X_COMMENT_LATEST
+    - event="WebScraper,RedditLatest=$X_COMMENT_LATEST RedditCommentCount=$X_COMMENT_COUNT"
+    - echo $event
+    - sudo curl -v --request POST "http://dlc.barco.com:8086/api/v2/write?org=Barco&bucket=web-scraper&precision=s" --header "Authorization:Token RY2nOnL5795tZZm4Qu11syzT4E-UWW27Nw2jPZgGw0GsTzd6J7GNGvNUsjm875V-Kmz06lmfQcvHs_BgB-Z4RQ==" --data-binary "$(echo "$event")"
+ScheduledSearchEngines:on-schedule:
+  stage: deploy
+  variables:
+    #CI_DEBUG_TRACE: "true"
+    GIT_CLEAN_FLAGS: none
+  tags:
+    - shell, ubuntu, GPU, dlc1
+  only:
+    - schedules
+  before_script:
+    - python --version
+    - sudo pip3 install -r ./requirements.txt
+    - cd SearchEngines/SearchEnginesScraper
+    - sudo python setup.py install
+  script:
+    - python3 searchEnginesScraper.py
+    - sudo curl -T DataFromGoogle.csv -u "admin:Barco1234" http://dlc.barco.com:9980/remote.php/dav/files/admin/Datasets/NLP/sentiment%20labelled%20sentences/
+    - sudo curl -T DataFromYahoo.csv -u "admin:Barco1234" http://dlc.barco.com:9980/remote.php/dav/files/admin/Datasets/NLP/sentiment%20labelled%20sentences/
+    - sudo curl -T DataFromBing.csv -u "admin:Barco1234" http://dlc.barco.com:9980/remote.php/dav/files/admin/Datasets/NLP/sentiment%20labelled%20sentences/
+    - sudo curl -T DataFromStartpage.csv -u "admin:Barco1234" http://dlc.barco.com:9980/remote.php/dav/files/admin/Datasets/NLP/sentiment%20labelled%20sentences/
+    - sudo curl -T DataFromAol.csv -u "admin:Barco1234" http://dlc.barco.com:9980/remote.php/dav/files/admin/Datasets/NLP/sentiment%20labelled%20sentences/
+    - sudo curl -T DataFromAsk.csv -u "admin:Barco1234" http://dlc.barco.com:9980/remote.php/dav/files/admin/Datasets/NLP/sentiment%20labelled%20sentences/
+
+    - X_COMMENT_COUNT=$(PYTHONIOENCODING=utf8 csvcut -c 2 -d , DataFromGoogle.csv |csvstat -d , --unique | csvcut  -d ,)
+    - echo $X_COMMENT_COUNT
+    - X_COMMENT_LATEST=$(date --date "$(PYTHONIOENCODING=utf8 csvcut -c 3 -d , DataFromGoogle.csv |csvstat -d , --max | csvcut  -d ,)" +%s)
+    - echo $X_COMMENT_LATEST
+    - event="WebScraper,GoogleLatest=$X_COMMENT_LATEST GoogleCommentCount=$X_COMMENT_COUNT"
+    - echo $event
+    - sudo curl -v --request POST "http://dlc.barco.com:8086/api/v2/write?org=Barco&bucket=web-scraper&precision=s" --header "Authorization:Token RY2nOnL5795tZZm4Qu11syzT4E-UWW27Nw2jPZgGw0GsTzd6J7GNGvNUsjm875V-Kmz06lmfQcvHs_BgB-Z4RQ==" --data-binary "$(echo "$event")"
+    
+    - X_COMMENT_COUNT=$(PYTHONIOENCODING=utf8 csvcut -c 2 -d , DataFromYahoo.csv |csvstat -d , --unique | csvcut  -d ,)
+    - echo $X_COMMENT_COUNT
+    - X_COMMENT_LATEST=$(date --date "$(PYTHONIOENCODING=utf8 csvcut -c 3 -d , DataFromYahoo.csv |csvstat -d , --max | csvcut  -d ,)" +%s)
+    - echo $X_COMMENT_LATEST
+    - event="WebScraper,YahooLatest=$X_COMMENT_LATEST YahooCommentCount=$X_COMMENT_COUNT"
+    - echo $event
+    - sudo curl -v --request POST "http://dlc.barco.com:8086/api/v2/write?org=Barco&bucket=web-scraper&precision=s" --header "Authorization:Token RY2nOnL5795tZZm4Qu11syzT4E-UWW27Nw2jPZgGw0GsTzd6J7GNGvNUsjm875V-Kmz06lmfQcvHs_BgB-Z4RQ==" --data-binary "$(echo "$event")"
+    
+    - X_COMMENT_COUNT=$(PYTHONIOENCODING=utf8 csvcut -c 2 -d , DataFromBing.csv |csvstat -d , --unique | csvcut  -d ,)
+    - echo $X_COMMENT_COUNT
+    - X_COMMENT_LATEST=$(date --date "$(PYTHONIOENCODING=utf8 csvcut -c 3 -d , DataFromBing.csv |csvstat -d , --max | csvcut  -d ,)" +%s)
+    - echo $X_COMMENT_LATEST
+    - event="WebScraper,BingLatest=$X_COMMENT_LATEST BingCommentCount=$X_COMMENT_COUNT"
+    - echo $event
+    - sudo curl -v --request POST "http://dlc.barco.com:8086/api/v2/write?org=Barco&bucket=web-scraper&precision=s" --header "Authorization:Token RY2nOnL5795tZZm4Qu11syzT4E-UWW27Nw2jPZgGw0GsTzd6J7GNGvNUsjm875V-Kmz06lmfQcvHs_BgB-Z4RQ==" --data-binary "$(echo "$event")"
+
+    - X_COMMENT_COUNT=$(PYTHONIOENCODING=utf8 csvcut -c 2 -d , DataFromStartpage.csv |csvstat -d , --unique | csvcut  -d ,)
+    - echo $X_COMMENT_COUNT
+    - X_COMMENT_LATEST=$(date --date "$(PYTHONIOENCODING=utf8 csvcut -c 3 -d , DataFromStartpage.csv |csvstat -d , --max | csvcut  -d ,)" +%s)
+    - echo $X_COMMENT_LATEST
+    - event="WebScraper,StartpageLatest=$X_COMMENT_LATEST StartpageCommentCount=$X_COMMENT_COUNT"
+    - echo $event
+    - sudo curl -v --request POST "http://dlc.barco.com:8086/api/v2/write?org=Barco&bucket=web-scraper&precision=s" --header "Authorization:Token RY2nOnL5795tZZm4Qu11syzT4E-UWW27Nw2jPZgGw0GsTzd6J7GNGvNUsjm875V-Kmz06lmfQcvHs_BgB-Z4RQ==" --data-binary "$(echo "$event")"
+
+    - X_COMMENT_COUNT=$(PYTHONIOENCODING=utf8 csvcut -c 2 -d , DataFromAol.csv |csvstat -d , --unique | csvcut  -d ,)
+    - echo $X_COMMENT_COUNT
+    - X_COMMENT_LATEST=$(date --date "$(PYTHONIOENCODING=utf8 csvcut -c 3 -d , DataFromAol.csv |csvstat -d , --max | csvcut  -d ,)" +%s)
+    - echo $X_COMMENT_LATEST
+    - event="WebScraper,AolLatest=$X_COMMENT_LATEST AolCommentCount=$X_COMMENT_COUNT"
+    - echo $event
+    - sudo curl -v --request POST "http://dlc.barco.com:8086/api/v2/write?org=Barco&bucket=web-scraper&precision=s" --header "Authorization:Token RY2nOnL5795tZZm4Qu11syzT4E-UWW27Nw2jPZgGw0GsTzd6J7GNGvNUsjm875V-Kmz06lmfQcvHs_BgB-Z4RQ==" --data-binary "$(echo "$event")"
+
+    - X_COMMENT_COUNT=$(PYTHONIOENCODING=utf8 csvcut -c 2 -d , DataFromAsk.csv |csvstat -d , --unique | csvcut  -d ,)
+    - echo $X_COMMENT_COUNT
+    - X_COMMENT_LATEST=$(date --date "$(PYTHONIOENCODING=utf8 csvcut -c 3 -d , DataFromAsk.csv |csvstat -d , --max | csvcut  -d ,)" +%s)
+    - echo $X_COMMENT_LATEST
+    - event="WebScraper,AskLatest=$X_COMMENT_LATEST AskCommentCount=$X_COMMENT_COUNT"
+    - echo $event
+    - sudo curl -v --request POST "http://dlc.barco.com:8086/api/v2/write?org=Barco&bucket=web-scraper&precision=s" --header "Authorization:Token RY2nOnL5795tZZm4Qu11syzT4E-UWW27Nw2jPZgGw0GsTzd6J7GNGvNUsjm875V-Kmz06lmfQcvHs_BgB-Z4RQ==" --data-binary "$(echo "$event")"
+ScheduledTwitter:on-schedule:
+  stage: deploy
+  variables:
+    #CI_DEBUG_TRACE: "true"
+    GIT_CLEAN_FLAGS: none
+  tags:
+    - shell, ubuntu, GPU, dlc1
+  only:
+    - schedules
+  before_script:
+    - python --version
+    - sudo pip3 install -r ./requirements.txt
+  script:
+    - cd Twitter/TwitterScraper
+    - sudo rm DataFromTwitter.csv
+    - sudo python3 TwitterScraper.py
+    - sudo curl -T DataFromTwitter.csv -u "admin:Barco1234" http://dlc.barco.com:9980/remote.php/dav/files/admin/Datasets/NLP/sentiment%20labelled%20sentences/
+    - X_COMMENT_COUNT=$(PYTHONIOENCODING=utf8 csvcut -c 1 -d , DataFromTwitter.csv |csvstat -d , --unique | csvcut  -d ,)
+    - echo $X_COMMENT_COUNT
+    - X_COMMENT_LATEST=$(date --date "$(PYTHONIOENCODING=utf8 csvcut -c 2 -d , DataFromTwitter.csv |csvstat -d , --max | csvcut  -d ,)" +%s)
+    - echo $X_COMMENT_LATEST
+    - event="WebScraper,TwitterLatest=$X_COMMENT_LATEST TwitterCommentCount=$X_COMMENT_COUNT"
+    - echo $event
+    - sudo curl -v --request POST "http://dlc.barco.com:8086/api/v2/write?org=Barco&bucket=web-scraper&precision=s" --header "Authorization:Token RY2nOnL5795tZZm4Qu11syzT4E-UWW27Nw2jPZgGw0GsTzd6J7GNGvNUsjm875V-Kmz06lmfQcvHs_BgB-Z4RQ==" --data-binary "$(echo "$event")"
